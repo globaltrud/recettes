@@ -884,8 +884,13 @@
                 <span><i class="bi bi-grip-vertical"></i> <span class="badge bg-secondary"># ${num}</span></span>
                 <div class="d-flex gap-2">
                     <select class="form-select form-select-sm w-auto select-type-etape" data-type_etape_id="${idEtape}" name="etape_type[]">
+<!-- 'étape', 'astuce','information','succès','danger','attention' -->
                         <option value="étape" ${typeInit === 'étape' ? 'selected' : ''}>Étape</option>
                         <option value="astuce" ${typeInit === 'astuce' ? 'selected' : ''}>Astuce</option>
+                        <option value="information" ${typeInit === 'information' ? 'selected' : ''}>Information</option>
+                        <option value="succès" ${typeInit === 'succès' ? 'selected' : ''}>Succès</option>
+                        <option value="danger" ${typeInit === 'danger' ? 'selected' : ''}>Danger</option>
+                        <option value="attention" ${typeInit === 'attention' ? 'selected' : ''}>Attention</option>
                     </select>
                     <div class="d-flex gap-2">
                 <button type="submit" form="form-recette" class="btn btn-xs btn-outline-success border-0 shadow-sm" title="Enregistrer toute la recette">
@@ -1203,31 +1208,93 @@
                     // La classe 'ql-editor' applique les styles, et on force le fond transparent en ligne
                     let safeContenu = `<div class="ql-editor" style="background:transparent; padding:0; height:auto; overflow:visible;">${e.contenu}</div>`;
 
-                    if (e.type_texte === 'étape') {
-                        html += `
-    <div class="mb-5">
-        <div class="d-flex align-items-center justify-content-between mb-3">
-            <div class="d-flex align-items-center">
+                    switch(e.type_texte){
+                        case 'étape':
+                            html += `
+<div class="card border-0 shadow-sm mb-4 overflow-hidden" style="border-radius: 12px;">
+    <div class="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
                 <h5 class="mb-0 text-dark fw-bold">Étape <span class="step-number">${stepNum}</span></h5>
-            </div>
-            <button class="btn btn-sm btn-outline-primary border-0"
-                    onclick="editAndGoToStep(${data.id}, '${e.id}')" title="Modifier cette étape">
-                <i class="bi bi-pencil-square"></i> Modifier
-            </button>
         </div>
-        <div class="ql-container ql-snow view-mode">
-            <div class="ql-editor" style="background:transparent; padding:0; height:auto; overflow:visible;">
+
+        <button class="btn btn-link text-decoration-none text-muted p-0"
+                onclick="editAndGoToStep(${data.id}, '${e.id}')"
+                style="font-size: 0.85rem;">
+            <i class="bi bi-pencil me-1"></i> Modifier
+        </button>
+    </div>
+
+    <div class="card-body pt-0 pb-4">
+        <div class="ql-container ql-editor p-0 ql-snow view-mode border-0">
+            <div class="ql-editor text-dark" style="background:transparent; padding:0; height:auto; overflow:visible; line-height: 1.6;">
                 ${e.contenu}
             </div>
         </div>
-    </div>`;
-                        stepNum++;
-                    } else {
-                        html += `
+    </div>
+</div>`;
+                            stepNum++;
+                                    break;
+                        case 'astuce':
+                            html += `
             <div class="alert alert-info border-info border-start border-4 py-3">
                 <i class="bi bi-lightbulb-fill text-warning"></i> <strong>Astuce du Chef :</strong><br>
                 ${safeContenu}
             </div>`;
+                            break;
+                        case 'information':
+                            html += `
+<div class="alert alert-primary border-0 border-start border-4 shadow-sm py-3 mb-4">
+    <div class="d-flex align-items-center mb-1">
+        <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+        <strong class="text-uppercase" style="letter-spacing: 1px;">Information</strong>
+    </div>
+    <div class="text-dark ps-4">
+        ${safeContenu}
+    </div>
+</div>`;
+                            break;
+                        case 'succès':
+                            html += `
+<div class="alert alert-success border-0 border-start border-4 shadow-sm py-3 mb-4">
+    <div class="d-flex align-items-center mb-1">
+        <i class="bi bi-check-circle-fill me-2 fs-5 text-success"></i>
+        <strong class="text-uppercase" style="letter-spacing: 1px;">Résultat attendu</strong>
+    </div>
+    <div class="text-dark ps-4 italic">
+        ${safeContenu}
+    </div>
+</div>`;
+                            break;
+                        case 'danger':
+                            html += `
+<div class="alert alert-danger border-0 border-start border-4 shadow-sm py-3 mb-4">
+    <div class="d-flex align-items-center mb-1">
+        <i class="bi bi-x-octagon-fill me-2 fs-5 text-danger"></i>
+        <strong class="text-uppercase" style="letter-spacing: 1px;">Important / Danger</strong>
+    </div>
+    <div class="text-dark ps-4 fw-bold">
+        ${safeContenu}
+    </div>
+</div>`;
+                            break;
+                        case 'attention':
+                            html += `
+<div class="alert alert-warning border-0 border-start border-4 shadow-sm py-3 mb-4">
+    <div class="d-flex align-items-center mb-1">
+        <i class="bi bi-exclamation-triangle-fill me-2 fs-5 text-warning"></i>
+        <strong class="text-uppercase" style="letter-spacing: 1px;">Attention</strong>
+    </div>
+    <div class="text-dark ps-4">
+        ${safeContenu}
+    </div>
+</div>`;
+                            break;
+                    }
+
+                    if (e.type_texte === 'étape') {
+
+                    } else {
+
                     }
                 });
             }
