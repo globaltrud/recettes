@@ -1,4 +1,5 @@
 <?php
+/** @var PDO $db */
 require_once 'db_config.php';
 header('Content-Type: application/json');
 
