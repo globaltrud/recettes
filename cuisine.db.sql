@@ -1,3 +1,5 @@
+-- noinspection SqlNoDataSourceInspectionForFile
+
 BEGIN TRANSACTION;
 CREATE TABLE IF NOT EXISTS categorie (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,7 +46,7 @@ CREATE TABLE IF NOT EXISTS recette_ingredients (
     PRIMARY KEY (id_recette, id_ingredient),
     FOREIGN KEY (id_recette) REFERENCES recette(id),
     FOREIGN KEY (id_ingredient) REFERENCES ingredient(id),
-    FOREIGN KEY (id_unite) REFERENCES "unite_old"(id)
+    FOREIGN KEY (id_unite) REFERENCES "unite"(id)
 );
 CREATE TABLE IF NOT EXISTS "unite" (
 	"id"	INTEGER,

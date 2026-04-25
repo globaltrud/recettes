@@ -77,7 +77,7 @@ try {
 
             echo json_encode(['status' => 'success', 'id' => $id ?: $db->lastInsertId()]);
             break;
-            $id = (int)$_POST['id'];
+            /*$id = (int)$_POST['id'];
             $negligeable = isset($_POST['negligeable']) ? 1 : 0;
             $insecable = isset($_POST['insecable']) ? 1 : 0;
 
@@ -99,7 +99,7 @@ try {
 
             echo json_encode(['status' => 'success', 'data' => $dataz]);
             break;
-
+*/
         case 'delete_unite':
             $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
 
@@ -271,7 +271,10 @@ SELECT
         ri.quantite, 
         ri.info_facultative, 
         i.id as id_ingredient,
-        i.insecable,
+        CASE 
+        WHEN i.insecable = 1 OR u.insecable = 1 THEN 1
+        ELSE 0
+    END AS insecable,
         u.id as id_unite,
         i.name as ingredient_name, 
         u.unit_name as unit_symbol, 

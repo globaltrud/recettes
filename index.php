@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChefLogistique</title>
+    <title>RECIPES</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://cdn.jsdelivr.net/npm/quill@2.0.0/dist/quill.snow.css" rel="stylesheet">
@@ -102,7 +102,28 @@
             font-size: 1.3em;
         }
 
+        /* Style appliqué au conteneur pendant le drag */
+        .sorting-active .etape-row {
+            max-height: 60px !important;
+            overflow: hidden !important;
+            margin-bottom: 10px !important;
+            opacity: 0.7;
+            background: #f8f9fa;
+        }
 
+        /* On cache tout ce qui prend de la place inutilement pendant le tri */
+        .sorting-active .ql-toolbar,
+        .sorting-active .ql-container,
+        .sorting-active .mb-2, /* Les labels/boutons type d'étape */
+        .sorting-active small {
+            display: none !important;
+        }
+
+        /* On stylise l'élément qu'on est en train de porter */
+        .sorting-active .sortable-ghost {
+            opacity: 0.3;
+            background: var(--theme-main) !important;
+        }
 
 
     </style>
@@ -118,14 +139,14 @@
     </div>
 </div>
 <nav class="navbar navbar-dark bg-primary mb-4">
-    <div class="container-fluid"><span class="navbar-brand">🍳 ChefLogistique</span></div>
+    <div class="container-fluid"><span class="navbar-brand">🍳 RECIPES</span></div>
 </nav>
 
 <div class="container">
     <div id="main-menu" class="row g-3">
-        <div class="col-4"><button class="btn btn-lg btn-outline-primary w-100 p-5" onclick="loadRecettes()">Gérer Recettes</button></div>
-        <div class="col-4"><button class="btn btn-lg btn-outline-success w-100 p-5" onclick="initCourses()">Faire Liste Courses</button></div>
-        <div class="col-4"><button class="btn btn-lg btn-outline-info w-100 p-4" onclick="loadUnites()">Gérer Unités</button></div>
+        <div class="col-4"><button class="btn btn-lg btn-outline-primary w-100 p-3" onclick="loadRecettes()">Gérer Recettes</button></div>
+        <div class="col-4"><button class="btn btn-lg btn-outline-success w-100 p-3" onclick="initCourses()">Faire Liste Courses</button></div>
+        <div class="col-4"><button class="btn btn-lg btn-outline-info w-100 p-3" onclick="loadUnites()">Gérer Unités</button></div>
     </div>
     <hr>
     <div id="app-content" class="mt-4"></div>
@@ -488,7 +509,7 @@
                 <span class="badge bg-light text-dark border" style="cursor:pointer" onclick="editRecette(${r.id}, 'ing')">
                     <i class="bi bi-cart-fill text-success"></i> ${r.nb_ing || 0}
                 </span>
-                <span class="badge bg-light text-dark border" style="cursor:pointer" onclick="editRecette(${r.id}, 'steps')">
+                <span class="badge bg-${r.nb_steps == 0 ? 'warning' : 'light'} text-dark border" style="cursor:pointer" onclick="editRecette(${r.id}, 'steps')">
                     <i class="bi bi-list-ol text-primary"></i> ${r.nb_steps || 0}
                 </span>
             </td>
@@ -601,6 +622,103 @@
     function showFormRecette(isEdit = false) {
         editors = {};
         let html = `
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">${isEdit ? 'Modifier la Recette' : 'Nouvelle Recette'}</h4>
+            <button class="btn btn-sm btn-light" onclick="loadRecettes()">Retour</button>
+        </div>
+        <div class="card-body">
+            <form id="form-recette">
+                <div class="mb-3">
+                    <label class="form-label">Thème visuel</label>
+                    <select class="form-select" name="theme" id="recette_theme">
+                        <option value="theme-plat">Plat</option>
+                        <option value="theme-entree">Entrée</option>
+                        <option value="theme-apero">Apéro</option>
+                        <option value="theme-mer">Poisson</option>
+                        <option value="theme-dessert">Dessert</option>
+                    </select>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-5">
+                        <label class="form-label fw-bold">Nom</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">Pers.</label>
+                        <input type="number" name="nombre_personne" class="form-control" value="2">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">Temps (min)</label>
+                        <input type="number" name="temps" class="form-control" value="30">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Difficulté (0 à 1)</label>
+                        <input type="number" name="difficulte" class="form-control" step="0.1" max="1" value="0.5">
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                         <label class="form-label fw-bold" for="desc-field">Description</label>
+                         <textarea class="form-control" placeholder="Description succinte..." name="description" id="desc-field"></textarea>
+                    </div>
+                </div>
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-ing" type="button">Ingrédients</button></li>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-steps" type="button">Préparation</button></li>
+                </ul>
+
+                <div class="tab-content border p-3 bg-white rounded">
+                    <div class="tab-pane fade show active" id="tab-ing">
+                        <div id="ingredients-container"></div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="addIngredientRow()">+ Ajouter Ingrédient</button>
+                    </div>
+                    <div class="tab-pane fade" id="tab-steps">
+                        <div id="etapes-container"></div>
+                        <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addEtapeRow()">+ Ajouter Étape / Astuce</button>
+                    </div>
+                </div>
+                <div class="text-end mt-4"><button type="submit" class="btn btn-success btn-lg px-5">Enregistrer</button></div>
+            </form>
+        </div>
+    </div>`;
+
+        $('#app-content').html(html);
+
+        const container = document.getElementById('etapes-container');
+        if (container) {
+            Sortable.create(container, {
+                animation: 150,
+                handle: '.card-header',
+                ghostClass: 'sortable-ghost',
+                // Déclenchement au début du drag
+                onStart: function() {
+                    $('#etapes-container').addClass('sorting-active');
+                },
+                // Déclenchement à la fin du drag
+                onEnd: function() {
+                    $('#etapes-container').removeClass('sorting-active');
+                    // Mise à jour des numéros d'étapes (ton code d'origine)
+                    $('.etape-row').each(function(index) {
+                        $(this).find('.badge').text('# ' + (index + 1));
+                    });
+                }
+            });
+        }
+
+        if (!isEdit) addIngredientRow();
+
+        $('#form-recette').on('submit', function (e) {
+            e.preventDefault();
+            Object.keys(editors).forEach(id => {
+                if(editors[id]) $(`#input-${id}`).val(editors[id].root.innerHTML);
+            });
+            saveRecette($(this).serialize());
+        });
+    }
+    function old_showFormRecette(isEdit = false) {
+        editors = {};
+        let html = `
         <div class="card shadow">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">${isEdit ? 'Modifier la Recette' : 'Nouvelle Recette'}</h4>
@@ -633,7 +751,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Difficulté (0 à 1)</label>
-                            <input type="number" name="difficulte" class="form-control" step="0.01" max="1" value="0.5">
+                            <input type="number" name="difficulte" class="form-control" step="0.1" max="1" value="0.5">
                         </div>
                     </div>
                     <div class="row mb-4">
@@ -1005,10 +1123,10 @@
                             <ul class="list-unstyled" id="ingredient-list">`;
 
 // Remplissage des ingrédients
-            console.log(data)
+
 
             data.ingredients.forEach(ing => {
-                console.log(data)
+
                 let pre = ing.prefixe ? ing.prefixe + ' ' : '';
                 let suf = ing.suffixe ? ' ' + ing.suffixe : '';
                 let symbol = ing.unit_symbol ? ing.unit_symbol : '';
@@ -1078,6 +1196,7 @@
         </div>`;
 
             $('#app-content').html(html);
+            updateServings(0);
         });
     }
 
@@ -1098,15 +1217,18 @@
 
             // Récupère l'info d'insécabilité injectée dans le HTML
             let isInsecable = $(this).data('insecable') == 1;
-            console.log(isInsecable)
+
             let newQty = (baseQty / baseServings) * newServings;
 
             if (isInsecable) {
-                // Règle : Si 1.1 -> 2 (Entier supérieur)
                 newQty = Math.ceil(newQty);
             } else {
-                // Règle : Arrondi propre pour les liquides/poids (ex: 1.25)
-                newQty = Math.round(newQty * 100) / 100;
+                newQty = (Math.round(newQty * 1000) / 1000);
+                if (Number.isInteger(newQty)) {
+                    newQty = parseInt(newQty);
+                }else{
+                    newQty = newQty.toFixed(3);
+                }
             }
 
             $(this).text(newQty);
@@ -1162,6 +1284,7 @@
                 ${i.name}
             </button>`).join('');
             $('#resultsSearchIng').html(html || 'Aucun résultat');
+            updateServings(0);
         });
     });
     $(document).on('change', '#recette_theme', function() {
@@ -1171,7 +1294,7 @@
         console.log("Thème prévisualisé : " + selectedTheme);
     });
 
-    $(document).ready(() => { initIngredientList(); });
+    $(document).ready(() => { initIngredientList(); loadRecettes()});
 
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
