@@ -54,12 +54,37 @@ try {
 
         case 'delete_category':
             $id = $_POST['id'];
+
             // Optionnel : vérifier si la catégorie a des enfants avant de supprimer
             $check = $db->prepare("SELECT COUNT(*) FROM categorie WHERE parent_id = ?");
             $check->execute([$id]);
             if ($check->fetchColumn() > 0) {
                 echo json_encode(['success' => false, 'error' => "Cette catégorie contient des sous-catégories. Supprimez-les d'abord."]);
-            } else {
+                break;
+            }
+// 2. Test des ingrédients (Catégorie actuelle + tous les descendants)
+            // On utilise une requête récursive pour trouver tous les IDs liés
+            $sqlCheckIng = "
+        WITH RECURSIVE family AS (
+            SELECT id FROM categorie WHERE id = ?
+            UNION ALL
+            SELECT c.id FROM categorie c INNER JOIN family f ON c.parent_id = f.id
+        )
+        SELECT COUNT(*) FROM ingredient 
+        WHERE category_id IN (SELECT id FROM family)";
+
+            $checkIng = $db->prepare($sqlCheckIng);
+            $checkIng->execute([$id]);
+
+            if ($checkIng->fetchColumn() > 0) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => "Impossible de supprimer : des ingrédients utilisent cette catégorie (ou l'une de ses sous-catégories)."
+                ]);
+                break;
+            }
+
+            {
                 $stmt = $db->prepare("DELETE FROM categorie WHERE id = ?");
                 $stmt->execute([$id]);
                 echo json_encode(['success' => true]);

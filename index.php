@@ -173,6 +173,57 @@
         .card-etape-border .card-header {
             background-color: #cfe2ff !important; /* Bleu très clair */
         }
+        /* Style pour l'arborescence des catégories */
+        .category-item {
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            border-radius: 4px;
+            margin-bottom: 2px;
+        }
+
+        .category-item:hover {
+            background-color: #f8f9fa;
+            border-left-color: #0d6efd;
+        }
+
+        .category-actions {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .category-item:hover .category-actions {
+            opacity: 1;
+        }
+
+        .indent-guide {
+            display: inline-block;
+            width: 20px;
+            height: 100%;
+            border-left: 1px dashed #dee2e6;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+
+        #ing-category {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            background-color: #fff;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        /* On stylise les options pour certains navigateurs (Chrome/Edge) */
+        #ing-category option {
+            padding: 8px;
+            color: #333;
+        }
+
+        /* Les catégories racines en gras (ne fonctionne pas partout mais aide) */
+        #ing-category option[value^=""]:not([value=""]) {
+            font-weight: 500;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -317,7 +368,16 @@
                         <button type="button" class="btn btn-secondary" onclick="resetCatForm()">Nouveau</button>
                         <button type="submit" class="btn btn-primary">Enregistrer</button>
                     </div>
-                    <div id="categoryListTree" class="list-group">
+                    <div class="col-md-8">
+                        <div class="d-flex justify-content-between align-items-center mb-2 p-2">
+                            <h6 class="mb-0 fw-bold"><i class="bi bi-list-ul me-2"></i>Arborescence</h6>
+                            <button type="button" class="btn btn-sm btn-outline-dark" onclick="resetCatForm()">
+                                <i class="bi bi-plus-lg"></i> Nouvelle
+                            </button>
+                        </div>
+
+                        <div id="categoryListTree" style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                        </div>
                     </div>
                 </div>
 
@@ -571,7 +631,7 @@
         });
     }
 
-    function renderCategoryTree(data) {
+    function old_renderCategoryTree(data) {
         const buildTree = (parentId = null, level = 0) => {
             let html = '';
             const children = data.filter(c => c.parent_id == parentId);
@@ -596,6 +656,38 @@
         $('#categoryListTree').html(buildTree());
     }
 
+    function renderCategoryTree(data) {
+        const buildTree = (parentId = null, level = 0) => {
+            let html = '';
+            const children = data.filter(c => c.parent_id == parentId);
+
+            children.forEach(c => {
+                const margin = level * 20;
+                html += `
+            <div class="category-item d-flex justify-content-between align-items-center p-2" style="margin-left: ${margin}px">
+                <div class="d-flex align-items-center">
+                    ${level > 0 ? '<span class="text-muted me-1">└─</span>' : '<i class="bi bi-folder2-open me-2 text-primary"></i>'}
+                    <span class="category-name ${level === 0 ? 'fw-bold' : 'small'}">${c.name}</span>
+                </div>
+                <div class="category-actions">
+                    <button type="button" class="btn btn-link btn-sm p-0 me-2 text-info"
+                        onclick="event.stopPropagation(); editCategory(${c.id})">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button type="button" class="btn btn-link btn-sm p-0 text-danger"
+                        onclick="event.stopPropagation(); deleteCategory(${c.id})">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                </div>
+            </div>`;
+                html += buildTree(c.id, level + 1);
+            });
+            return html;
+        };
+
+        const treeContent = buildTree();
+        $('#categoryListTree').html(treeContent || '<div class="text-muted small text-center p-3">Aucune catégorie</div>');
+    }
     function editCategory(id, name, parentId) {
         const cat = currentCategories.find(c => c.id == id);
         if (cat) {
@@ -1499,12 +1591,29 @@
         }, 800);
     }
 
-    function openIngredientManager() {
+    function old_openIngredientManager() {
+
         loadCategoriesForSelect();
         loadIngredientsTable();
         $('#modalIngredients').modal('show');
     }
 
+    function openIngredientManager() {
+        // 1. On va d'abord chercher les catégories via l'API
+        $.get('api.php?action=list_categories', function(categoriesData) {
+
+            // 2. Maintenant qu'on a les données (categoriesData),
+            // on peut remplir le select proprement
+            updateIngredientCategorySelect(categoriesData);
+
+            // 3. On charge le reste (le tableau des ingrédients)
+            loadIngredientsTable();
+
+            // 4. On affiche enfin la modale
+            $('#modalIngredients').modal('show');
+
+        }, 'json'); // On précise qu'on attend du JSON
+    }
     function loadCategoriesForSelect() {
         $.get('api.php?action=get_categories', function(categories) {
             let html = '<option value="">Choisir...</option>';
@@ -1541,7 +1650,66 @@
         });
         $('#list-ingredients-body').html(html);
     }
+    function updateCategorySelect(categories) {
+        const $select = $('#ing-category');
+        $select.empty().append('<option value="">Choisir une catégorie...</option>');
 
+        // Fonction interne pour générer les options récursivement
+        const addOptions = (parentId = null, level = 0) => {
+            const children = categories.filter(c => c.parent_id == parentId);
+
+            children.forEach(c => {
+                // Construction de l'indentation
+                // Niveau 0 : MAJUSCULES ET GRAS (via texte)
+                // Niveau 1+ : Indentation avec filet
+                let prefix = "";
+                let name = c.name;
+
+                if (level > 0) {
+                    // On utilise des espaces insécables et un coude de filet
+                    prefix = "&nbsp;&nbsp;".repeat(level - 1) + "└─ ";
+                } else {
+                    // Pour les racines, on peut mettre un petit emoji dossier
+                    prefix = "📂 ";
+                }
+
+                $select.append(`<option value="${c.id}">${prefix}${name}</option>`);
+
+                // Appel récursif pour les enfants
+                addOptions(c.id, level + 1);
+            });
+        };
+
+        addOptions();
+    }
+
+    function updateIngredientCategorySelect(categories) {
+        const $select = $('#ing-category');
+
+        // 1. On vide et on met l'option par défaut
+        $select.empty().append('<option value="">Choisir une catégorie...</option>');
+
+        // 2. Fonction récursive pour créer l'arborescence visuelle
+        const buildOptions = (parentId = null, level = 0) => {
+            // On filtre pour avoir les enfants du parent actuel
+            const children = categories.filter(c => c.parent_id == parentId);
+
+            children.forEach(c => {
+                // Création de l'indentation visuelle
+                // &nbsp; est un espace insécable pour que le navigateur ne le supprime pas
+                const indentation = level > 0 ? "&nbsp;&nbsp;".repeat(level) + "└─ " : "";
+
+                // On ajoute l'option
+                $select.append(`<option value="${c.id}">${indentation}${c.name}</option>`);
+
+                // On descend dans les enfants (récursion)
+                buildOptions(c.id, level + 1);
+            });
+        };
+
+        // 3. On lance la construction à partir de la racine (null)
+        buildOptions(null, 0);
+    }
     // Soumission du formulaire (Ajout ou Modif)
     $('#form-ing-crud').on('submit', function(e) {
         e.preventDefault();
