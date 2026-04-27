@@ -174,9 +174,14 @@
 
 <div class="container">
     <div id="main-menu" class="row g-3">
-        <div class="col-4"><button class="btn btn-lg btn-outline-primary w-100 p-3" onclick="loadRecettes()">Gérer Recettes</button></div>
-        <div class="col-4"><button class="btn btn-lg btn-outline-success w-100 p-3" onclick="initCourses()">Faire Liste Courses</button></div>
-        <div class="col-4"><button class="btn btn-lg btn-outline-info w-100 p-3" onclick="loadUnites()">Gérer Unités</button></div>
+        <div class="col-3"><button class="btn btn-lg btn-outline-primary w-100 p-3" onclick="loadRecettes()">Gérer Recettes</button></div>
+        <div class="col-3"><button class="btn btn-lg btn-outline-success w-100 p-3" onclick="initCourses()">Faire Liste Courses</button></div>
+        <div class="col-3"><button class="btn btn-lg btn-outline-info w-100 p-3" onclick="loadUnites()">Gestion Unités</button></div>
+        <div class="col-3">
+        <button class="btn btn-lg btn-outline-info w-100 p-3" onclick="openIngredientManager()">
+            Gestion les Ingrédients
+        </button>
+        </div
     </div>
     <hr>
     <div id="app-content" class="mt-4"></div>
@@ -197,8 +202,81 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalIngredients" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Ingrédients</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-4 border-end">
+                        <form id="form-ing-crud" class="p-2">
+                            <input type="hidden" name="id" id="ing-id">
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">Nom</label>
+                                <input type="text" name="name" id="ing-name" class="form-control" required>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">Catégorie</label>
+                                <div class="input-group">
+                                    <select name="category_id" id="ing-category" class="form-select" required>
+                                        <option value="">Chargement...</option>
+                                    </select>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="promptNewCategory()">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">Image (URL)</label>
+                                <input type="text" name="img_src" id="ing-img" class="form-control" placeholder="https://...">
+                            </div>
+                            <div class="mb-2">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="insecable" id="ing-insecable" value="1">
+                                    <label class="form-check-label small fw-bold">Insécable (ex: œuf)</label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Description</label>
+                                <textarea name="description" id="ing-desc" class="form-control" rows="2"></textarea>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary" id="btn-save-ing">Enregistrer</button>
+                                <button type="button" class="btn btn-light btn-sm" onclick="resetIngForm()">Annuler / Nouveau</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                            <input type="text" id="search-ing-list" class="form-control border-start-0" placeholder="Filtrer les ingrédients...">
+                        </div>
+                        <div class="table-responsive" style="max-height: 500px;">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Image</th>
+                                    <th>Nom</th>
+                                    <th>Catégorie</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody id="list-ingredients-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
     let currentSort = { col: 'name', asc: true };
+    const quillInstances = {};
 
     function sortData(data, column) {
         // Si on clique sur la même colonne, on inverse l'ordre
@@ -382,8 +460,6 @@
             html += '</tbody></table></div>';
             $('#app-content').html(html);
 
-
-
             $('#form-add-unite').on('submit', function(e) {
                 e.preventDefault();
                 // Si on a un ID, c'est une update, sinon c'est un ajout
@@ -400,13 +476,6 @@
                     }
                 }, 'json');
             });
-            /*
-            $('#form-add-unite').on('submit', function(e) {
-                e.preventDefault();
-                $.post('api.php?action=save_unite', $(this).serialize(), function() {
-                    loadUnites();
-                });
-            });*/
         });
     }
 
@@ -883,6 +952,9 @@
             <div class="card-header bg-light d-flex justify-content-between align-items-center" style="cursor: move;">
                 <span><i class="bi bi-grip-vertical"></i> <span class="badge bg-secondary"># ${num}</span></span>
                 <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillWithLorem('${idEtape}',33)">
+                        <i class="bi bi-justify-left"></i>Lorem
+                    </button>
                     <select class="form-select form-select-sm w-auto select-type-etape" data-type_etape_id="${idEtape}" name="etape_type[]">
 <!-- 'étape', 'astuce','information','succès','danger','attention' -->
                         <option value="étape" ${typeInit === 'étape' ? 'selected' : ''}>Étape</option>
@@ -990,7 +1062,7 @@
                     }
                 }
             });
-
+            quillInstances['editor-' + editorId] = quill;
             // 4. MISE EN PLACE DE L'ICÔNE ET RÉCUPÉRATION DATA
             editors[idEtape] = quill;
 
@@ -1124,6 +1196,21 @@
 
         const toast = new bootstrap.Toast(toastEl, { delay: 3000 }); // Disparaît après 3s
         toast.show();
+    }
+
+    function fillWithLorem(etapeId, count_word = 50) {
+        $.get('api.php?action=lorem&count_word=' + count_word, function(response) {
+            // On cible l'éditeur Quill.
+            // Selon ton code, il faut récupérer l'instance Quill de cette étape.
+            // Si tu stockes tes instances dans un objet global 'quillInstances' :
+            if (quillInstances['editor-' + etapeId]) {
+                quillInstances['editor-' + etapeId].root.innerHTML = response.text;
+            } else {
+                // Alternative si tu n'as pas d'objet global :
+                // on cherche le div éditable de l'étape
+                $('#etape-' + etapeId).find('.ql-editor').html(response.text);
+            }
+        }, 'json');
     }
 
     let currentRecipeView = null;
@@ -1382,6 +1469,106 @@
             }
         }, 800);
     }
+
+    function openIngredientManager() {
+        loadCategoriesForSelect();
+        loadIngredientsTable();
+        $('#modalIngredients').modal('show');
+    }
+
+    function loadCategoriesForSelect() {
+        $.get('api.php?action=get_categories', function(categories) {
+            let html = '<option value="">Choisir...</option>';
+            categories.forEach(c => {
+                html += `<option value="${c.id}">${c.name}</option>`;
+            });
+            $('#ing-category').html(html);
+        });
+    }
+
+    function loadIngredientsTable() {
+        $.get('api.php?action=get_all_ingredients_full', function(ingredients) {
+            renderIngredientsTable(ingredients);
+        });
+    }
+
+    function renderIngredientsTable(data) {
+        let html = '';
+        data.forEach(ing => {
+            html += `
+        <tr id="tr-ing-${ing.id}">
+            <td>${ing.img_src ? `<img src="${ing.img_src}" width="40" height="40" class="rounded shadow-sm">` : ''} </td>
+            <td><strong>${ing.name}</strong></td>
+            <td><span class="badge bg-light text-dark border">${ing.category_name || 'Sans cat.'}</span></td>
+            <td class="text-end">
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="editIng(${JSON.stringify(ing).replace(/"/g, '&quot;')})">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteIng(${ing.id})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        </tr>`;
+        });
+        $('#list-ingredients-body').html(html);
+    }
+
+    // Soumission du formulaire (Ajout ou Modif)
+    $('#form-ing-crud').on('submit', function(e) {
+        e.preventDefault();
+        const formData = $(this).serialize();
+        $.post('api.php?action=save_ingredient', formData, function(res) {
+            if(res.success) {
+                loadIngredientsTable();
+                resetIngForm();
+                alert('Ingrédient enregistré !');
+            }
+        }, 'json');
+    });
+
+    function editIng(ing) {
+        $('#ing-id').val(ing.id);
+        $('#ing-name').val(ing.name);
+        $('#ing-category').val(ing.category_id);
+        $('#ing-img').val(ing.img_src);
+        $('#ing-desc').val(ing.description);
+        $('#ing-insecable').prop('checked', ing.insecable == 1);
+        $('#btn-save-ing').text('Mettre à jour');
+    }
+
+    function resetIngForm() {
+        $('#form-ing-crud')[0].reset();
+        $('#ing-id').val('');
+        $('#btn-save-ing').text('Enregistrer');
+    }
+
+    function deleteIng(id) {
+        if(confirm('Supprimer cet ingrédient ?')) {
+            $.post('api.php?action=delete_ingredient', {id: id}, function(res) {
+                if(res.success) loadIngredientsTable();
+            }, 'json');
+        }
+    }
+
+
+    // Filtre de recherche dynamique
+    $('#search-ing-list').on('keyup', function() {
+        let query = $(this).val().toLowerCase().trim();
+
+        // On crée un motif : "crfr" devient "c.*r.*f.*r"
+        // .  = n'importe quel caractère
+        // * = n'importe quel nombre de fois
+        let pattern = query.split('').join('.*');
+        let regex = new RegExp(pattern);
+
+        $("#list-ingredients-body tr").filter(function() {
+            // On récupère le texte du nom de l'ingrédient (2ème colonne <td>)
+            let name = $(this).find('td:eq(1)').text().toLowerCase();
+
+            // On affiche si le nom match la regex
+            $(this).toggle(regex.test(name));
+        });
+    });
 
     // Recherche dynamique dans la modale
     $(document).on('input', '#inputSearchIng', function () {

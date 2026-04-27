@@ -5,6 +5,23 @@ header('Content-Type: application/json');
 
 $action = $_GET['action'] ?? '';
 
+function loremSentences($nbSentences = 5) {
+    $words = explode(' ', 'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua');
+    $sentences = [];
+
+    for ($i = 0; $i < $nbSentences; $i++) {
+        $length = rand(6, 12);
+        $sentence = [];
+
+        for ($j = 0; $j < $length; $j++) {
+            $sentence[] = $words[array_rand($words)];
+        }
+
+        $sentences[] = ucfirst(implode(' ', $sentence)) . '.';
+    }
+
+    return implode(' ', $sentences);
+}
 try {
     switch ($action) {
 
@@ -31,6 +48,17 @@ try {
                 (float)$_POST['form_init_value']
             ]);
             echo json_encode(['status' => 'success']);
+            break;
+
+        case "lorem":
+
+            $count_word = isset($_GET['count_word']) && !empty($_GET['count_word']) ? (int)$_GET['count_word'] : 30;
+            $loremText = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.";
+
+            // Tu peux même faire un truc plus sympa avec des balises HTML
+            $htmlLorem = "<p>" . loremSentences($count_word) . "</p>";
+
+            echo json_encode(['text' => $htmlLorem]);
             break;
 
         //case 'update_unite':
@@ -351,7 +379,6 @@ SELECT
             }
             break;
 
-// Dans api.php, ajoute ce cas :
         case 'upload_image':
             if (!isset($_FILES['image'])) {
                 throw new Exception("Aucune image reçue.");
@@ -374,6 +401,57 @@ SELECT
                 ]);
             } else {
                 throw new Exception("Erreur lors de l'enregistrement du fichier.");
+            }
+            break;
+
+        case 'get_all_ingredients_full':
+            $stmt = $db->query("SELECT ingredient.*, categorie.name as category_name 
+                        FROM ingredient 
+                        LEFT JOIN categorie ON ingredient.category_id = categorie.id 
+                        ORDER BY ingredient.name ASC");
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+            break;
+
+        case 'save_ingredient':
+            $id = $_POST['id'] ?? '';
+            $name = $_POST['name'];
+            $category_id = $_POST['category_id'];
+            $img_src = $_POST['img_src'];
+            $description = $_POST['description'];
+            $insecable = isset($_POST['insecable']) ? 1 : 0;
+
+            if ($id) {
+                $stmt = $db->prepare("UPDATE ingredient SET name=?, category_id=?, img_src=?, description=?, insecable=? WHERE id=?");
+                $stmt->execute([$name, $category_id, $img_src, $description, $insecable, $id]);
+            } else {
+                $stmt = $db->prepare("INSERT INTO ingredient (name, category_id, img_src, description, insecable) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([$name, $category_id, $img_src, $description, $insecable]);
+            }
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'delete_ingredient':
+            $id = $_POST['id'];
+            $stmt = $db->prepare("DELETE FROM ingredient WHERE id = ?");
+            $stmt->execute([$id]);
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'get_categories':
+            $stmt = $db->query("SELECT * FROM categorie ORDER BY name ASC");
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+            break;
+
+        case 'save_category':
+            $name = $_POST['name'] ?? '';
+            if ($name) {
+                try {
+                    $stmt = $db->prepare("INSERT INTO categorie (name) VALUES (?)");
+                    $stmt->execute([$name]);
+                    echo json_encode(['success' => true]);
+                } catch (Exception $e) {
+                    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+                }
             }
             break;
         default:
