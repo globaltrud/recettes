@@ -24,6 +24,47 @@ function loremSentences($nbSentences = 1) {
 }
 try {
     switch ($action) {
+        // --- Dans api.php ---
+
+        case 'list_categories':
+            // On récupère tout, on triera côté client ou via une fonction récursive
+            $stmt = $db->query("SELECT * FROM categorie ORDER BY name ASC");
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+            break;
+
+        case 'save_category':
+            $id = $_POST['id'] ?? null;
+            $name = $_POST['name'];
+            $parent_id = !empty($_POST['parent_id']) ? $_POST['parent_id'] : null;
+
+            if ($id) {
+                // Empêcher qu'une catégorie soit son propre parent
+                if ($id == $parent_id) {
+                    echo json_encode(['success' => false, 'error' => "Une catégorie ne peut pas être son propre parent."]);
+                    break;
+                }
+                $stmt = $db->prepare("UPDATE categorie SET name = ?, parent_id = ? WHERE id = ?");
+                $stmt->execute([$name, $parent_id, $id]);
+            } else {
+                $stmt = $db->prepare("INSERT INTO categorie (name, parent_id) VALUES (?, ?)");
+                $stmt->execute([$name, $parent_id]);
+            }
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'delete_category':
+            $id = $_POST['id'];
+            // Optionnel : vérifier si la catégorie a des enfants avant de supprimer
+            $check = $db->prepare("SELECT COUNT(*) FROM categorie WHERE parent_id = ?");
+            $check->execute([$id]);
+            if ($check->fetchColumn() > 0) {
+                echo json_encode(['success' => false, 'error' => "Cette catégorie contient des sous-catégories. Supprimez-les d'abord."]);
+            } else {
+                $stmt = $db->prepare("DELETE FROM categorie WHERE id = ?");
+                $stmt->execute([$id]);
+                echo json_encode(['success' => true]);
+            }
+            break;
 
         case 'list_unites':
             $stmt = $db->query("SELECT * FROM unite ORDER BY name ASC");
@@ -564,7 +605,7 @@ SELECT
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
             break;
 
-        case 'save_category':
+        case 'save_category_old':
             $name = $_POST['name'] ?? '';
             if ($name) {
                 try {

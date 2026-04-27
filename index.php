@@ -194,6 +194,9 @@
         <div class="col-3"><button class="btn btn-lg btn-outline-primary w-100 p-3" onclick="loadRecettes()">Gérer Recettes</button></div>
         <div class="col-3"><button class="btn btn-lg btn-outline-success w-100 p-3" onclick="initCourses()">Faire Liste Courses</button></div>
         <div class="col-3"><button class="btn btn-lg btn-outline-info w-100 p-3" onclick="loadUnites()">Gestion Unités</button></div>
+        <div class="col-3"><button class="btn btn-lg btn-outline-info w-100 p-3" onclick="openCategoryManager()">
+                <i class="bi bi-tags-fill"></i> Gérer les catégories
+            </button></div>
         <div class="col-3">
         <button class="btn btn-lg btn-outline-info w-100 p-3" onclick="openIngredientManager()">
             Gestion les Ingrédients
@@ -291,6 +294,37 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalCategory" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formCategory">
+                <div class="modal-header"><h5>Gérer les Catégories</h5></div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="cat_id">
+                    <div class="mb-3">
+                        <label>Nom</label>
+                        <input type="text" name="name" id="cat_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Catégorie Parente</label>
+                        <select name="parent_id" id="cat_parent_id" class="form-select">
+                            <option value="">-- Aucune (Racine) --</option>
+                        </select>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" onclick="resetCatForm()">Nouveau</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    </div>
+                    <div id="categoryListTree" class="list-group">
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
 <script>
     let currentSort = { col: 'name', asc: true };
     const quillInstances = {};
@@ -326,7 +360,7 @@
     let editors = {};
     let allIngredients = [];
     let currentRowEl = null;
-
+    let currentCategories = [];
     // --- HELPERS ---
     function formatDifficulte(score, maxval = 5) {
         let note = score * maxval;
@@ -496,6 +530,109 @@
         });
     }
 
+    function openCategoryManager() {
+        // 1. On charge les données depuis l'API
+        loadCategories();
+
+        // 2. On ouvre la modale (Assure-toi que l'ID correspond à celui de la modale donnée plus haut)
+        const myModal = new bootstrap.Modal(document.getElementById('modalCategory'));
+        myModal.show();
+    }
+    function loadCategories() {
+        $.get('api.php?action=list_categories', function(data) {
+            currentCategories = data; // Stockage global pour l'édition
+
+            // Génération du sélecteur avec arborescence
+            let selectHtml = '<option value="">-- Aucune (Racine) --</option>';
+
+            // Fonction récursive pour générer les options indentées
+            const buildSelectOptions = (parentId = null, level = 0) => {
+                let options = '';
+                // On filtre les enfants du parent actuel
+                const children = data.filter(c => c.parent_id == parentId);
+
+                children.forEach(c => {
+                    // On crée l'indentation (3 espaces par niveau + un petit symbole)
+                    const prefix = level > 0 ? '&nbsp;&nbsp;'.repeat(level) + '└─ ' : '';
+
+                    options += `<option value="${c.id}">${prefix}${c.name}</option>`;
+
+                    // Appel récursive pour les sous-catégories
+                    options += buildSelectOptions(c.id, level + 1);
+                });
+                return options;
+            };
+
+            selectHtml += buildSelectOptions();
+            $('#cat_parent_id').html(selectHtml);
+
+            // On rafraîchit aussi l'affichage de la liste en dessous
+            renderCategoryTree(data);
+        });
+    }
+
+    function renderCategoryTree(data) {
+        const buildTree = (parentId = null, level = 0) => {
+            let html = '';
+            const children = data.filter(c => c.parent_id == parentId);
+
+            children.forEach(c => {
+                html += `
+            <div class="list-group-item d-flex justify-content-between align-items-center" style="margin-left: ${level * 20}px">
+                <span>${level > 0 ? '↳ ' : ''}${c.name}</span>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-info"
+    onclick="event.stopPropagation(); editCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}', ${c.parent_id})">
+    <i class="bi bi-pencil"></i>
+</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteCategory(${c.id})"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>`;
+                html += buildTree(c.id, level + 1);
+            });
+            return html;
+        };
+
+        $('#categoryListTree').html(buildTree());
+    }
+
+    function editCategory(id, name, parentId) {
+        const cat = currentCategories.find(c => c.id == id);
+        if (cat) {
+            $('#cat_id').val(cat.id);
+            $('#cat_name').val(cat.name);
+            $('#cat_parent_id').val(cat.parent_id || "");
+
+            // Optionnel : Scroller vers le haut du formulaire pour voir les changements
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    function resetCatForm() {
+        $('#cat_id').val('');
+        $('#formCategory')[0].reset();
+    }
+
+    $('#formCategory').submit(function(e) {
+        e.preventDefault();
+        $.post('api.php?action=save_category', $(this).serialize(), function(res) {
+            if(res.success) {
+                resetCatForm();
+                loadCategories();
+            } else {
+                alert(res.error);
+            }
+        });
+    });
+
+    function deleteCategory(id) {
+        if(confirm("Supprimer cette catégorie ?")) {
+            $.post('api.php?action=delete_category', {id: id}, function(res) {
+                if(res.success) loadCategories();
+                else alert(res.error);
+            });
+        }
+    }
     function showAddUniteForm() {
         // On récupère les infos par étapes (ou tu peux créer une Modal Bootstrap si tu préfères)
         const name = prompt("Nom complet (ex: Grammes) :");
