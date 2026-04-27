@@ -6,7 +6,7 @@ header('Content-Type: application/json');
 $action = $_GET['action'] ?? '';
 
 function loremSentences($nbSentences = 1) {
-    $words = explode(' ', 'recette cuisine ingrédient cuisson four poêle casserole mélange préparation découpe assaisonnement sel poivre épices herbes ail oignon tomate beurre huile couille sucre farine pâte levure crème lait fromage viande poisson légumes bouillon marinade griller rôtir mijoter dresser servir dégustation saveur parfum texture croquant fondant');
+    $words = explode(' ', 'recette cuisine ingrédient cuisson four poêle casserole mélange préparation découpe assaisonnement sel poivre épices herbes ail oignon tomate beurre huile couille sucre farine pâte levure crème lait fromage viande poisson légumes bouillon marinade griller rôtir mijoter dresser servir dégustation saveur parfum texture croquant fondant saveur délicate dans de de infusée blanche huile trfufe pression. du balsamique caramélisée saveurs plat réductionde le de la les du rehausse noisette légère contraste fruits croustillant avec émulsion traditionnelles artisanale saveurs pâtisserie combine innovantes boulangerie la développe profondeur fermentation dans aromatique lente ancienne');
     $sentences = [];
 
     for ($i = 0; $i < $nbSentences; $i++) {

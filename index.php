@@ -58,6 +58,23 @@
             --theme-main: #0077be;
             --theme-light: #e0f0ff;
         }
+        /* Pastille visuelle pour le thème */
+        .theme-dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 5%;
+            background-color: var(--theme-main);
+            border: 1px solid rgba(0,0,0,0.1);
+            margin-right: 8px;
+        }
+
+        /* On s'assure que la ligne parente porte la classe du thème */
+        .theme-indicator-cell {
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+        }
         .recipe-header {
             background: linear-gradient(135deg, var(--theme-main) 0%, rgba(255,255,255,0) 100%), #343a40;
             color: white;
@@ -544,6 +561,7 @@
             <table class="table table-hover bg-white shadow-sm rounded align-middle">
                 <thead class="table-dark">
                     <tr>
+                        <th style="cursor:pointer" onclick="resort('name')">Thème ${getIcon('theme')}</th>
                         <th style="cursor:pointer" onclick="resort('name')">Nom ${getIcon('name')}</th>
                         <th style="cursor:pointer" onclick="resort('nombre_personne')">Pers. ${getIcon('nombre_personne')}</th>
                         <th style="cursor:pointer" onclick="resort('temps_realisation')">Temps ${getIcon('temps_realisation')}</th>
@@ -555,7 +573,13 @@
                 <tbody>`;
 
         data.forEach(r => {
-            html += `<tr>
+            html += `<td>
+            <div class="theme-indicator-cell ${r.theme}">
+                <span class="theme-dot" title="${r.theme}"></span> ${(r.theme).substring(6, 113)}
+
+            </div>
+        </td>
+
             <td class="fw-bold">${r.name}</td>
             <td>${r.nombre_personne}</td>
             <td>${formatDuree(r.temps_realisation)}</td>
@@ -585,224 +609,6 @@
         const sorted = sortData(lastRecetteData, column);
         loadRecettes(sorted);
     }
-
-    /*
-        function old_loadUnites() {
-        $('#app-content').html('<div class="text-center mt-5"><div class="spinner-border text-primary"></div></div>');
-        $.get('api.php?action=get_all_unites', function (data) {
-            let html = `
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3><i class="bi bi-measuring-cup"></i> Gestion des Unités</h3>
-                <button class="btn btn-primary" onclick="showAddUniteForm()">+ Nouvelle Unité</button>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover bg-white shadow-sm rounded">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Nom</th>
-                            <th>Symbole</th>
-                            <th>Pas (Step)</th>
-                            <th>Type</th>
-                            <th>Conv. Base (g/ml)</th>
-                            <th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-
-            data.forEach(u => {
-                html += `<tr>
-                <td class="fw-bold">${u.name}</td>
-                <td><span class="badge bg-info text-dark">${u.symbole || '-'}</span></td>
-                <td><code>${u.form_step}</code></td>
-                <td><span class="badge bg-light text-dark border">${u.type_unite || 'autre'}</span></td>
-                <td>${u.conversion_base ? u.conversion_base : '-'}</td>
-                <td class="text-end">
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUnite(${u.id}, '${u.name.replace(/'/g, "\\'")}')">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </td>
-            </tr>`;
-            });
-
-            html += '</tbody></table></div>';
-            $('#app-content').html(html);
-        });
-    }
-    function old_loadRecettes() {
-        $('#app-content').html('<div class="text-center mt-5"><div class="spinner-border text-primary"></div></div>');
-        $.get('api.php?action=list_recettes', function (data) {
-            let html = `
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3>Gestion des Recettes</h3>
-                <button class="btn btn-primary" onclick="showFormRecette(false)">+ Nouvelle Recette</button>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover bg-white shadow-sm rounded align-middle">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Nom</th>
-                            <th>Pers.</th>
-                            <th>Temps</th>
-                            <th>Difficulté</th>
-                            <th>Ingrédients</th>
-                            <th>Ingrédients / Étapes</th>
-<th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-
-            data.forEach(r => {
-                html += `<tr>
-                <td class="fw-bold">${r.name}</td>
-                <td><i class="bi bi-person-fill"></i> <strong>x ${r.nombre_personne}</strong></td>
-                <td>${formatDuree(r.temps_realisation)}</td>
-                <td>${formatDifficulte(r.difficulte)}</td>
-                <td>
-                    <span class="badge bg-${r.nb_ing < 3 ? 'warning' : 'light'} text-dark border" title="Modifier les ingrédients"
-                          style="cursor:pointer" onclick="editRecette(${r.id}, 'ing')">
-                        <i class="bi bi-cart-fill text-success"></i> ${r.nb_ing || 0}
-                    </span>
-                    <span class="badge bg-${r.nb_steps == 0 ? 'danger' : 'light'} text-dark border" title="Modifier la préparation"
-                          style="cursor:pointer" onclick="editRecette(${r.id}, 'steps')">
-                        <i class="bi bi-list-ol text-primary"></i> ${r.nb_steps || 0}
-                    </span>
-
-                </td>
-                <td class="text-end">
-                    <button class="btn btn-sm btn-success" onclick="viewRecette(${r.id})">
-                        <i class="bi bi-eye"></i>
-                    </button>
-                    <button class="btn btn-sm btn-info" onclick="editRecette(${r.id})">
-                        <i class="bi bi-pencil"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteRecette(${r.id})">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </td>
-            </tr>`;
-            });
-
-            html += '</tbody></table></div>';
-            $('#app-content').html(html);
-        });
-    }
-    function old_loadRecettes() {
-        $('#app-content').html('<div class="text-center"><div class="spinner-border text-primary"></div></div>');
-        $.get('api.php?action=list_recettes', function (data) {
-            let html = `<div class="d-flex justify-content-between align-items-center mb-3">
-                    <h3>Gestion des Recettes</h3>
-                    <button class="btn btn-primary" onclick="showFormRecette(false)">+ Nouvelle Recette</button>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover bg-white shadow-sm rounded">
-                        <thead class="table-dark">
-                            <tr><th>Nom</th><th>Pers.</th><th>Temps</th><th>Difficulté</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody>`;
-            data.forEach(r => {
-                html += `<tr>
-                    <td>${r.name}</td>
-                    <td>${r.nombre_personne}</td>
-                    <td>${formatDuree(r.temps_realisation)}</td>
-                    <td>${formatDifficulte(r.difficulte)}</td>
-                    <td>
-
-                        <button class="btn btn-sm btn-info" onclick="editRecette(${r.id})">Éditer</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteRecette(${r.id})">Suppr.</button>
-                    </td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            $('#app-content').html(html);
-        });
-    }
-    function old_showFormRecette(isEdit = false) {
-        editors = {};
-        let html = `
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h4 class="mb-0">${isEdit ? 'Modifier la Recette' : 'Nouvelle Recette'}</h4>
-                <button class="btn btn-sm btn-light" onclick="loadRecettes()">Retour</button>
-            </div>
-            <div class="card-body">
-                <form id="form-recette">
-<div class="mb-3">
-    <label class="form-label">Thème visuel</label>
-    <select class="form-select" name="theme" id="recette_theme">
-        <option value="theme-plat">Plat</option>
-        <option value="theme-entree">Entrée</option>
-        <option value="theme-apero">Apéro</option>
-        <option value="theme-mer">Poisson</option>
-        <option value="theme-dessert">Dessert</option>
-    </select>
-</div>
-                    <div class="row mb-4">
-                        <div class="col-md-5">
-                            <label class="form-label fw-bold">Nom</label>
-                            <input type="text" name="name" class="form-control" required>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold">Pers.</label>
-                            <input type="number" name="nombre_personne" class="form-control" value="2">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold">Temps (min)</label>
-                            <input type="number" name="temps" class="form-control" value="30">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold">Difficulté (0 à 1)</label>
-                            <input type="number" name="difficulte" class="form-control" step="0.1" max="1" value="0.5">
-                        </div>
-                    </div>
-                    <div class="row mb-4">
-                        <div class="col-md-12">
-                             <label class="form-label fw-bold" for="desc-field">Description</label>
-                             <textarea class="form-control" placeholder="Description succinte..." name="description" id="desc-field"></textarea>
-                        </div>
-                    </div>
-                    <ul class="nav nav-tabs mb-3" role="tablist">
-                        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-ing" type="button">Ingrédients</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-steps" type="button">Préparation</button></li>
-                    </ul>
-
-                    <div class="tab-content border p-3 bg-white rounded">
-                        <div class="tab-pane fade show active" id="tab-ing">
-                            <div id="ingredients-container"></div>
-                            <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="addIngredientRow()">+ Ajouter Ingrédient</button>
-                        </div>
-                        <div class="tab-pane fade" id="tab-steps">
-                            <div id="etapes-container"></div>
-                            <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addEtapeRow()">+ Ajouter Étape / Astuce</button>
-                        </div>
-                    </div>
-                    <div class="text-end mt-4"><button type="submit" class="btn btn-success btn-lg px-5">Enregistrer</button></div>
-                </form>
-            </div>
-        </div>`;
-
-        $('#app-content').html(html);
-
-        const container = document.getElementById('etapes-container');
-        if (container) {
-            Sortable.create(container, {
-                animation: 150, handle: '.card-header', ghostClass: 'bg-light',
-                onEnd: function() {
-                    $('.etape-row').each(function(index) { $(this).find('.badge').text('# ' + (index + 1)); });
-                }
-            });
-        }
-
-        if (!isEdit) addIngredientRow();
-
-        $('#form-recette').on('submit', function (e) {
-            e.preventDefault();
-            Object.keys(editors).forEach(id => {
-                if(editors[id]) $(`#input-${id}`).val(editors[id].root.innerHTML);
-            });
-            saveRecette($(this).serialize());
-        });
-    }
-    */
 
     function showFormRecette(isEdit = false) {
         editors = {};
@@ -952,9 +758,16 @@
             <div class="card-header bg-light d-flex justify-content-between align-items-center" style="cursor: move;">
                 <span><i class="bi bi-grip-vertical"></i> <span class="badge bg-secondary"># ${num}</span></span>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillWithLorem('${idEtape}')">
-                        <i class="bi bi-justify-left"></i>Lorem
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillWithLorem('${idEtape}', 1)">
+                        <i class="bi bi-justify-left"></i>Lorem <strong>Phrase</strong>
                     </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillWithLorem('${idEtape}',4)">
+                        <i class="bi bi-justify-left"></i>Lorem <strong>Grand</strong>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillWithLorem('${idEtape}', 20)">
+                        <i class="bi bi-justify-left"></i>Lorem <strong>Enorme</strong>
+                    </button>
+
                     <select class="form-select form-select-sm w-auto select-type-etape" data-type_etape_id="${idEtape}" name="etape_type[]">
 <!-- 'étape', 'astuce','information','succès','danger','attention' -->
                         <option value="étape" ${typeInit === 'étape' ? 'selected' : ''}>Étape</option>
@@ -1198,7 +1011,7 @@
         toast.show();
     }
 
-    function fillWithLorem(etapeId, count_word = 50) {
+    function old_fillWithLorem(etapeId, count_word = 12) {
         $.get('api.php?action=lorem&count_word=' + count_word, function(response) {
             // On cible l'éditeur Quill.
             // Selon ton code, il faut récupérer l'instance Quill de cette étape.
@@ -1213,6 +1026,85 @@
         }, 'json');
     }
 
+    function oldfillWithLorem(etapeId, count_word = 12) {
+        const quill = quillInstances['editor-editor-' + etapeId];
+
+        if (!confirm("Es-tu sûr de vouloir ajouter du texte de remplissage ?")) return;
+
+        if (!quill) {
+            console.error("Instance Quill introuvable pour l'étape " + etapeId);
+            return;
+        }
+
+        $.get('api.php?action=lorem&count_word=' + count_word, function(response) {
+            // 1. On récupère la sélection actuelle (position du curseur)
+            const range = quill.getSelection();
+            console.log(quill.getSelection())
+            console.log(quill)
+            console.table([quill])
+            if (range) {
+                // 2. Si le curseur est actif, on insère à l'index du curseur
+                // range.index est la position, response.text est le contenu HTML
+                quill.clipboard.dangerouslyPasteHTML(range.index, response.text);
+
+                // Optionnel : Placer le curseur juste après le texte inséré
+                // On estime la longueur (sommaire) pour replacer le curseur
+                quill.setSelection(range.index + response.text.length);
+            } else {
+                // 3. Si le curseur n'est pas dans l'éditeur, on insère à la fin
+                const length = quill.getLength();
+                // Note : le curseur de fin est souvent à length - 1
+                quill.clipboard.dangerouslyPasteHTML(length, response.text);
+            }
+        }, 'json');
+    }
+    function fillWithLorem(etapeId, count_word = 12) {
+        // 1. GESTION DE LA CLÉ : On nettoie pour éviter les "editor-editor-"
+        // On enlève tous les "editor-" existants et on en met un seul proprement
+        let cleanId = etapeId.toString().replace('editor-', '').replace('editor-', '');
+        const key = 'editor-editor-' + cleanId;
+
+        const quill = quillInstances[key];
+
+        if (!quill) {
+            console.error("Instance Quill introuvable pour la clé : " + key);
+            console.log("Clés actuellement dans quillInstances :", Object.keys(quillInstances));
+            return;
+        }
+
+        // 2. CONFIRMATION
+        if (!confirm("Es-tu sûr de vouloir ajouter du texte de remplissage ?")) return;
+
+        // 3. LE SECRET : On force le focus AVANT l'appel API
+        // Cela permet à Quill de se souvenir de là où était le curseur
+        quill.focus();
+
+        $.get('api.php?action=lorem&count_word=' + count_word, function(response) {
+            // 4. RÉCUPÉRATION DE LA POSITION
+            let range = quill.getSelection();
+
+            let index = 0;
+            if (range) {
+                // Si on a une sélection, on prend l'index du curseur
+                index = range.index;
+            } else {
+                // Si toujours NULL (pas de focus préalable), on insère à la fin
+                // .getLength() - 1 car Quill termine toujours par un \n invisible
+                index = Math.max(0, quill.getLength() - 1);
+            }
+
+            // 5. INSERTION
+            quill.clipboard.dangerouslyPasteHTML(index, response.text);
+
+            // 6. REPLACER LE CURSEUR (Optionnel)
+            // On attend que Quill finisse le rendu HTML pour mettre le curseur après
+            setTimeout(() => {
+                // On estime la longueur ajoutée (très sommaire)
+                quill.setSelection(index + response.text.length, 0);
+            }, 50);
+
+        }, 'json');
+    }
     let currentRecipeView = null;
 
     function viewRecette(id) {
@@ -1238,7 +1130,7 @@
         <h1 class="display-4 fw-bold">${data.name}</h1>
         <p class="mb-5">${data.description}</p>
                 <div class="d-flex gap-3 mt-3">
-                    <span class="badge recipe-badge p-2 fs-6"><i class="bi bi-clock"></i> ${formatDuree(data.temps_realisation)}</span>
+                    <span class="badge recipe-badge p-2 fs-6"><i class="bi bi-clock"></i> <span class="text-danger">${formatDuree(data.temps_realisation)}</span></span>
                     <span class="badge recipe-badge p-2 fs-6"><i class="bi bi-bar-chart"></i> Diff: ${formatDifficulte(data.difficulte)}</span>
                 </div>
             </div>
