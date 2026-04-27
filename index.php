@@ -952,7 +952,7 @@
             <div class="card-header bg-light d-flex justify-content-between align-items-center" style="cursor: move;">
                 <span><i class="bi bi-grip-vertical"></i> <span class="badge bg-secondary"># ${num}</span></span>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillWithLorem('${idEtape}',33)">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillWithLorem('${idEtape}')">
                         <i class="bi bi-justify-left"></i>Lorem
                     </button>
                     <select class="form-select form-select-sm w-auto select-type-etape" data-type_etape_id="${idEtape}" name="etape_type[]">

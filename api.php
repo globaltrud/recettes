@@ -5,8 +5,8 @@ header('Content-Type: application/json');
 
 $action = $_GET['action'] ?? '';
 
-function loremSentences($nbSentences = 5) {
-    $words = explode(' ', 'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua');
+function loremSentences($nbSentences = 1) {
+    $words = explode(' ', 'recette cuisine ingrédient cuisson four poêle casserole mélange préparation découpe assaisonnement sel poivre épices herbes ail oignon tomate beurre huile couille sucre farine pâte levure crème lait fromage viande poisson légumes bouillon marinade griller rôtir mijoter dresser servir dégustation saveur parfum texture croquant fondant');
     $sentences = [];
 
     for ($i = 0; $i < $nbSentences; $i++) {
@@ -178,7 +178,7 @@ try {
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
             break;
 
-        case 'save_recette':
+        case 'old_save_recette':
             // Vérification sommaire des données
             if (empty($_POST['name'])) throw new Exception("Le nom de la recette est obligatoire.");
 
@@ -192,7 +192,7 @@ try {
                 $temps = 5 * $mn_temp + ($temp_mod != 0 ? 5 : 0);
             }
             // 1. Insertion de la recette
-            $stmt = $db->prepare("INSERT INTO recette (name, nombre_personne, temps_realisation, difficulte, description, theme) VALUES (?, ?, ?, ?, ?)");
+            $stmt = $db->prepare("INSERT INTO recette (name, nombre_personne, temps_realisation, difficulte, description, theme) VALUES (?, ?, ?, ?, ?, ?)");
             $stmt->execute([
                 $_POST['name'],
                 (int)$_POST['nombre_personne'],
@@ -226,6 +226,128 @@ try {
             echo json_encode(['status' => 'success']);
             break;
 
+        case 'old2_save_recette':
+            $id = $_POST['id'] ?? null;
+            $name = $_POST['name'];
+            $description = $_POST['description'];
+            $nb = $_POST['nombre_personne'];
+            $temps = $_POST['temps'];
+            $diff = $_POST['difficulte'];
+            $theme = $_POST['theme'] ?? 'theme-plat';
+            $koi = '';
+            if ($id) {
+                // --- MODE ÉDITION ---
+                $stmt = $db->prepare("UPDATE recette SET name=?, description=?, nombre_personne=?, temps_realisation=?, difficulte=?, theme=? WHERE id=?");
+                $stmt->execute([$name, $description, $nb, $temps, $diff, $theme, $id]);
+                $koi .= '// --- MODE ÉDITION ---';
+            } else {
+                // --- MODE CRÉATION ---
+                $stmt = $db->prepare("INSERT INTO recette (name, description, nombre_personne, temps_realisation, difficulte, theme) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$name, $description, $nb, $temps, $diff, $theme]);
+                // CRITIQUE : On récupère l'ID qui vient d'être créé pour l'utiliser après
+                $id = $db->lastInsertId();
+                $koi .= '// --- MODE CRÉATION ---';
+            }
+
+            // 1. GESTION DES INGRÉDIENTS (On vide et on remplit)
+            $db->prepare("DELETE FROM recette_ingredients WHERE id_recette = ?")->execute([$id]);
+            if (isset($_POST['ingredient_id'])) {
+                foreach ($_POST['ingredient_id'] as $k => $ingId) {
+                    $koi .= " $k ?";
+                    if (!$ingId) continue;
+                    $koi .= " $k $id, $ingId, " . $_POST['id_unite'][$k] .", " . $_POST['quantite'][$k]. "---------";
+                    $stmt = $db->prepare("INSERT INTO recette_ingredients (id_recette, id_ingredient, id_unite, quantite) VALUES (?, ?, ?, ?)");
+                    $stmt->execute([$id, $ingId, $_POST['id_unite'][$k], $_POST['quantite'][$k]]);
+                }
+            }
+
+            // 2. GESTION DES ÉTAPES (C'est ici que ça bloquait !)
+            // On supprime les anciennes étapes pour cet ID (propre en création comme en édition)
+            $db->prepare("DELETE FROM recette_etape WHERE recette_id = ?")->execute([$id]);
+
+            if (isset($_POST['etape_contenu'])) {
+                foreach ($_POST['etape_contenu'] as $k => $contenu) {
+                    if (empty(trim($contenu))) continue;
+
+                    $type = $_POST['etape_type'][$k] ?? 'étape';
+                    $priorite = $k + 1; // L'ordre du formulaire
+                    $koi .= " $id, $contenu, $type, $priorite  !!!!!!!";
+                    $stmt = $db->prepare("INSERT INTO recette_etape (recette_id, contenu, type_texte, priorite) VALUES (?, ?, ?, ?)");
+                    $stmt->execute([$id, $contenu, $type, $priorite]);
+                }
+            }
+
+            echo json_encode(['success' => true, 'id' => $id, 'log'=>$koi]);
+            break;
+
+        case 'save_recette':
+            try {
+                $db->beginTransaction();
+
+                $id = !empty($_POST['id']) ? $_POST['id'] : null;
+                $name = $_POST['name'];
+                $description = $_POST['description'];
+                $nb = (int)$_POST['nombre_personne'];
+                $diff = (float)$_POST['difficulte'];
+                $theme = $_POST['theme'] ?? 'theme-plat';
+
+                // Logique de calcul du temps (extraite de ton ancien code)
+                $temps_brut = (int)$_POST['temps'];
+                $mn_temp = (int)($temps_brut / 5);
+                $temp_mod = $temps_brut % 5;
+                $temps = ($mn_temp <= 0) ? $temp_mod : (5 * $mn_temp + ($temp_mod != 0 ? 5 : 0));
+
+                if ($id) {
+                    // --- MODE ÉDITION ---
+                    $stmt = $db->prepare("UPDATE recette SET name=?, description=?, nombre_personne=?, temps_realisation=?, difficulte=?, theme=? WHERE id=?");
+                    $stmt->execute([$name, $description, $nb, $temps, $diff, $theme, $id]);
+                } else {
+                    // --- MODE CRÉATION ---
+                    $stmt = $db->prepare("INSERT INTO recette (name, description, nombre_personne, temps_realisation, difficulte, theme) VALUES (?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$name, $description, $nb, $temps, $diff, $theme]);
+                    $id = $db->lastInsertId();
+                }
+
+                // 1. GESTION DES INGRÉDIENTS (Noms calqués sur ton index.php)
+                $db->prepare("DELETE FROM recette_ingredients WHERE id_recette = ?")->execute([$id]);
+
+                if (isset($_POST['ing_id']) && is_array($_POST['ing_id'])) {
+                    $stmtIng = $db->prepare("INSERT INTO recette_ingredients (id_recette, id_ingredient, id_unite, quantite, info_facultative) VALUES (?, ?, ?, ?, ?)");
+                    foreach ($_POST['ing_id'] as $k => $ingId) {
+                        if (empty($ingId)) continue;
+
+                        $stmtIng->execute([
+                            $id,
+                            (int)$ingId,
+                            (int)$_POST['ing_unit'][$k],
+                            (float)$_POST['ing_qty'][$k],
+                            $_POST['ing_info'][$k] ?? ''
+                        ]);
+                    }
+                }
+
+                // 2. GESTION DES ÉTAPES
+                $db->prepare("DELETE FROM recette_etape WHERE recette_id = ?")->execute([$id]);
+
+                if (isset($_POST['etape_contenu']) && is_array($_POST['etape_contenu'])) {
+                    $stmtEtape = $db->prepare("INSERT INTO recette_etape (recette_id, contenu, type_texte, priorite) VALUES (?, ?, ?, ?)");
+                    foreach ($_POST['etape_contenu'] as $k => $contenu) {
+                        if (empty(trim($contenu))) continue;
+
+                        $type = $_POST['etape_type'][$k] ?? 'étape';
+                        $priorite = $k + 1;
+                        $stmtEtape->execute([$id, $contenu, $type, $priorite]);
+                    }
+                }
+
+                $db->commit();
+                echo json_encode(['success' => true, 'id' => $id]);
+
+            } catch (Exception $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
+            break;
         case 'get_calcul_recette':
             $id = (int)$_GET['id'];
             $nouveau_pax = (int)$_GET['pax'];
